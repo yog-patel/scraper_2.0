@@ -39,14 +39,14 @@ puppeteerExtra.use(StealthPlugin());
 
 async function launchBrowser() {
   try {
-    // For GitHub Actions, need to run in headless mode
+    console.log("Launching browser...");
+    
     const browser = await puppeteerExtra.launch({
-      headless: true, // Set to true for GitHub Actions
+      headless: "new", // Use the new headless mode
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
         '--disable-gpu'
       ]
     });
@@ -54,7 +54,7 @@ async function launchBrowser() {
     console.log("Browser launched successfully");
     return browser;
   } catch (error) {
-    console.error("Error launching browser Yog:", error);
+    console.error("Error launching browser:", error);
     throw error;
   }
 }

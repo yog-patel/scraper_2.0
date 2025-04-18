@@ -16,7 +16,7 @@ const { Client } = require("pg");
 
 // Use the external database URL from Render
 const client = new Client({
-  connectionString: "postgresql://carnage:ABEUEEbCtea4a7nSpDOXdHgs8xIewl8F@dpg-d00pbvk9c44c73cj0gmg-a.virginia-postgres.render.com/scraped_info",//process.env.DB_URL,
+  connectionString: process.env.DB_URL,//process.env.DB_URL,
   ssl: {
     rejectUnauthorized: false, // Render requires this for SSL
   },

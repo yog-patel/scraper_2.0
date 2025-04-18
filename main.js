@@ -101,10 +101,95 @@ const {
 
 // Main execution function
 async function main() {
-    const urls = [
-        "https://www.mvlempyr.com/novel/reawakening-sss-rank-villains-pov", // Target URL 1
-        "https://www.mvlempyr.com/novel/extras-death-i-am-the-son-of-hades", // Target URL 2
-        "https://www.mvlempyr.com/novel/shattered-innocence-transmigrated-into-a-novel-as-an-extra",  // Target URL 3
+    // const urls = [
+    //     "https://www.mvlempyr.com/novel/reawakening-sss-rank-villains-pov", // Target URL 1
+    //     "https://www.mvlempyr.com/novel/extras-death-i-am-the-son-of-hades", // Target URL 2
+    //     "https://www.mvlempyr.com/novel/shattered-innocence-transmigrated-into-a-novel-as-an-extra",  // Target URL 3
+    //     "https://www.mvlempyr.com/novel/struggling-as-a-villain",
+    //     "https://www.mvlempyr.com/novel/third-rebirth-godsfall-apocalypse",
+    //     "https://www.mvlempyr.com/novel/i-was-mistaken-for-the-reincarnated-evil-overlord",
+    //     "https://www.mvlempyr.com/novel/worldcrafter---building-my-underground-kingdom",
+    //     "https://www.mvlempyr.com/novel/daily-life-of-a-cultivation-judge",
+    //     "https://www.mvlempyr.com/novel/antagonist-protection-service",
+    //     "https://www.mvlempyr.com/novel/extra-to-protagonist",
+    //     "https://www.mvlempyr.com/novel/reincarnated-as-an-elf-prince",
+    //     "https://www.mvlempyr.com/novel/my-talents-name-is-generator",
+    //     "https://www.mvlempyr.com/novel/becoming-the-strongest-as-a-game-dev",
+    //     "https://www.mvlempyr.com/novel/evolution-of-the-ruined-heir",
+    //     "https://www.mvlempyr.com/novel/ascension-of-the-dark-seraph",
+    //     "https://www.mvlempyr.com/novel/zombie-apocalypse-reborn-with-a-farming-space",
+    //     "https://www.mvlempyr.com/novel/the-glitched-mage",
+    //     "https://www.mvlempyr.com/novel/strongest-demigod-system",
+    //     "https://www.mvlempyr.com/novel/magus-supremacy",
+    //     "https://www.mvlempyr.com/novel/how-to-survive-in-the-roanoke-colony",
+    //     "https://www.mvlempyr.com/novel/godly-revival-system-i-buy-my-killers-stats",
+    //     "https://www.mvlempyr.com/novel/rebirth-slice-of-life-cultivation",
+    //     "https://www.mvlempyr.com/novel/i-accidentally-became-a-superstar",
+    //     "https://www.mvlempyr.com/novel/the-abyssal-garden-no-room-for-the-idle",
+    //     "https://www.mvlempyr.com/novel/from-abyssal-invasion-to-bursting-stars-with-a-single-sword",
+    //     "https://www.mvlempyr.com/novel/ex-rank-talent-awakening-100-dodge-rate",
+    //     "https://www.mvlempyr.com/novel/multiversal-livestreaming-system-i-can-copy-my-viewers-skills",
+    //     "https://www.mvlempyr.com/novel/the-villains-pov",
+    //     "https://www.mvlempyr.com/novel/i-slaughtered-through-the-dungeon-worlds-with-my-cheats",
+    //     "https://www.mvlempyr.com/novel/wizard-i-can-refine-everything",
+    //     "https://www.mvlempyr.com/novel/i-become-a-martial-arts-god-in-the-chaotic-demon-world"
+    //     // Add more URLs as needed
+    // ];
+
+    const combinedUrls = [
+        "https://www.mvlempyr.com/novel/shattered-innocence-transmigrated-into-a-novel-as-an-extra",
+        "https://www.mvlempyr.com/novel/extra-s-death-i-am-the-son-of-hades",
+        "https://www.mvlempyr.com/novel/the-extra-s-rise",
+        "https://www.mvlempyr.com/novel/transmigrating-as-an-extra-third-rate-villain",
+        "https://www.mvlempyr.com/novel/my-beautiful-disciples-i-m-really-not-the-main-character",
+        "https://www.mvlempyr.com/novel/sss-rank-mother-in-law-to-an-invincible-family",
+        "https://www.mvlempyr.com/novel/terra-nova-online-rise-of-the-strongest-player",
+        "https://www.mvlempyr.com/novel/having-children-earns-benefit-start-competing-for-dominance-in-the-world-by-marrying-a-wife",
+        "https://www.mvlempyr.com/novel/i-can-only-cultivate-in-a-game",
+        "https://www.mvlempyr.com/novel/weapon-system-in-zombie-apocalypse",
+        "https://www.mvlempyr.com/novel/strongest-kingdom-my-op-kingdom-got-transported-along-with-me",
+        "https://www.mvlempyr.com/novel/a-farmer-s-journey-to-immortality",
+        "https://www.mvlempyr.com/novel/bitcoin-billionaire-i-regressed-to-invest-in-the-first-bitcoin",
+        "https://www.mvlempyr.com/novel/creation-of-all-things",
+        "https://www.mvlempyr.com/novel/the-last-experience-point",
+        "https://www.mvlempyr.com/novel/insect-tamer-s-ascension",
+        "https://www.mvlempyr.com/novel/supreme-warlock-system-from-zero-to-ultimate-with-my-wives",
+        "https://www.mvlempyr.com/novel/the-redwood-saga",
+        "https://www.mvlempyr.com/novel/starting-with-an-sss-rank-swordsmanship-talent",
+        "https://www.mvlempyr.com/novel/follow-the-path-of-dao-from-infancy",
+        "https://www.mvlempyr.com/novel/reborn-as-the-genius-son-of-the-richest-family",
+        "https://www.mvlempyr.com/novel/parasite-gu-breeding-longveity-path-starting-from-the-love-enamored-gu",
+        "https://www.mvlempyr.com/novel/lackey-s-seducing-survival-odyssey",
+        "https://www.mvlempyr.com/novel/dashing-student",
+        "https://www.mvlempyr.com/novel/shadow-slave",
+        "https://www.mvlempyr.com/novel/reincarnated-as-the-third-son-of-the-duke",
+        "https://www.mvlempyr.com/novel/major-league-system",
+        "https://www.mvlempyr.com/novel/the-conquerors-path",
+        "https://www.mvlempyr.com/novel/the-fairies-i-flirted-with-in-the-game-became-real",
+        "https://www.mvlempyr.com/novel/the-last-paragon-in-the-apocalypse",
+        "https://www.mvlempyr.com/novel/the-world-conquest-giving-birth-to-become-a-god",
+        "https://www.mvlempyr.com/novel/global-lord-100-drop-rate",
+        "https://www.mvlempyr.com/novel/i-have-a-disciple-simulator",
+        "https://www.mvlempyr.com/novel/in-the-supreme-fantasy-world-back-in-time-and-do-whatever-you-want",
+        "https://www.mvlempyr.com/novel/global-lords-hundredfold-increments-starting-with-the-undead",
+        "https://www.mvlempyr.com/novel/i-truly-am-the-villian",
+        "https://www.mvlempyr.com/novel/my-love-debts-are-everywhere",
+        "https://www.mvlempyr.com/novel/my-enchanting-system",
+        "https://www.mvlempyr.com/novel/dimensional-descent",
+        "https://www.mvlempyr.com/novel/grand-lust-sovereign",
+        "https://www.mvlempyr.com/novel/kingdom-building-game-starting-out-with-a-million-upgrade-points",
+        "https://www.mvlempyr.com/novel/natural-disaster-i-started-by-hoarding-tens-of-billions-of-supplies",
+        "https://www.mvlempyr.com/novel/assassin-farmer",
+        "https://www.mvlempyr.com/novel/inside-an-adult-game-as-a-former-hero",
+        "https://www.mvlempyr.com/novel/extra-s-descent",
+        "https://www.mvlempyr.com/novel/villain-the-play-of-destiny",
+        "https://www.mvlempyr.com/novel/fog",
+        "https://www.mvlempyr.com/novel/poison-god-s-heritage",
+        "https://www.mvlempyr.com/novel/runemaster-in-the-last-days",
+        "https://www.mvlempyr.com/novel/necromancer-of-the-shadows",
+        "https://www.mvlempyr.com/novel/guide-to-raising-the-sick-villain",
+        "https://www.mvlempyr.com/novel/reawakening-sss-rank-villains-pov",
+        "https://www.mvlempyr.com/novel/extras-death-i-am-the-son-of-hades",
         "https://www.mvlempyr.com/novel/struggling-as-a-villain",
         "https://www.mvlempyr.com/novel/third-rebirth-godsfall-apocalypse",
         "https://www.mvlempyr.com/novel/i-was-mistaken-for-the-reincarnated-evil-overlord",
@@ -133,8 +218,7 @@ async function main() {
         "https://www.mvlempyr.com/novel/i-slaughtered-through-the-dungeon-worlds-with-my-cheats",
         "https://www.mvlempyr.com/novel/wizard-i-can-refine-everything",
         "https://www.mvlempyr.com/novel/i-become-a-martial-arts-god-in-the-chaotic-demon-world"
-        // Add more URLs as needed
-    ];
+      ];
 
     const browser = await launchBrowser();
 

@@ -136,7 +136,7 @@ async function main() {
     //     // Add more URLs as needed
     // ];
 
-    const combinedUrls = [
+    const urls = [
         "https://www.mvlempyr.com/novel/shattered-innocence-transmigrated-into-a-novel-as-an-extra",
         "https://www.mvlempyr.com/novel/extra-s-death-i-am-the-son-of-hades",
         "https://www.mvlempyr.com/novel/the-extra-s-rise",

@@ -139,7 +139,6 @@ async function main() {
     const urls = [
         "https://www.mvlempyr.com/novel/shattered-innocence-transmigrated-into-a-novel-as-an-extra",
         "https://www.mvlempyr.com/novel/extra-s-death-i-am-the-son-of-hades",
-        "https://www.mvlempyr.com/novel/the-extra-s-rise",
         "https://www.mvlempyr.com/novel/transmigrating-as-an-extra-third-rate-villain",
         "https://www.mvlempyr.com/novel/my-beautiful-disciples-i-m-really-not-the-main-character",
         "https://www.mvlempyr.com/novel/sss-rank-mother-in-law-to-an-invincible-family",

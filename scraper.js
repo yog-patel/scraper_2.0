@@ -61,8 +61,18 @@ async function scrapeNovelDetails(page) {
   });
 
   const numOfCh = await page.evaluate(() => {
-      const num = document.getElementById("chapter-count");
-      return num ? parseInt(num.innerText.trim()) : 0;
+    //   const num = document.getElementById("chapter-count");
+    //   return num ? parseInt(num.innerText.trim()) : 0;
+    let el = document.getElementById("chapter-count");
+    if (!el) {
+        el = document.getElementById("chapter-count2");
+    }
+    if (el) {
+        const text = el.innerText.trim();
+        const parsed = parseInt(text);
+        return isNaN(parsed) ? 0 : parsed;
+    }
+    return 0;
   });
 
   // Combine all info

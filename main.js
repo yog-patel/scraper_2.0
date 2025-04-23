@@ -379,48 +379,96 @@ async function main() {
                 );
                 await page.goto(url, { waitUntil: "networkidle2" });
 
+                // // Scrape novel details
+                // const novelData = await scrapeNovelDetails(page);
+                // console.log("Novel information:", novelData);
+
+                // if (!novelData.title || !novelData.author) {
+                //     console.log("Missing essential novel data (title or author). Exiting.");
+                //     continue;  // Skip this novel and move to the next one
+                // }
+
+                // // Store novel in database or get existing ID
+                // const novelId = await insertNovel({
+                //     title: novelData.title,
+                //     author: novelData.author,
+                //     description: novelData.synopsis,
+                //     cover_image_url: novelData.imageLink,
+                //     tags: novelData.tags,
+                //     genres: novelData.genres,
+                //     status: novelData.status,
+                // });
+
+                // if (!novelId) {
+                //     console.log("Failed to process novel data. Skipping.");
+                //     continue;  // Skip this novel and move to the next one
+                // }
+
+                // // Get latest chapter from DB to determine how many chapters to scrape
+                // const latestChapterNumber = await getLatestChapterNumber(novelId);
+                // console.log(`Current chapters in database: ${latestChapterNumber}`);
+                // console.log(`Total chapters on site: ${novelData.numOfCh}`);
+
+                // if (latestChapterNumber >= novelData.numOfCh) {
+                //     console.log("Novel is already up to date. No new chapters to scrape.");
+                //     continue;  // Skip this novel and move to the next one
+                // }
+
+                // // Calculate how many new chapters to scrape
+                // const chaptersToScrape = novelData.numOfCh - latestChapterNumber;
+                // console.log(`Need to scrape ${chaptersToScrape} new chapters.`);
+
+                // // Scrape chapters (only the new ones)
+                // const scrapedChapters = await scrapeChapters(page, novelData.numOfCh, latestChapterNumber);
+                // console.log(`Total new chapters scraped: ${scrapedChapters.length}`);
+
                 // Scrape novel details
-                const novelData = await scrapeNovelDetails(page);
-                console.log("Novel information:", novelData);
+        const novelData = await scrapeNovelDetails(page);
+        console.log("Novel information:", novelData);
 
-                if (!novelData.title || !novelData.author) {
-                    console.log("Missing essential novel data (title or author). Exiting.");
-                    continue;  // Skip this novel and move to the next one
-                }
+        if (!novelData.title || !novelData.author) {
+            console.log("Missing essential novel data (title or author). Exiting.");
+            continue;  // Skip this novel and move to the next one
+        }
 
-                // Store novel in database or get existing ID
-                const novelId = await insertNovel({
-                    title: novelData.title,
-                    author: novelData.author,
-                    description: novelData.synopsis,
-                    cover_image_url: novelData.imageLink,
-                    tags: novelData.tags,
-                    genres: novelData.genres,
-                    status: novelData.status,
-                });
+        // Store novel in database or get existing ID
+        const novelId = await insertNovel({
+            title: novelData.title,
+            author: novelData.author,
+            description: novelData.synopsis,
+            cover_image_url: novelData.imageLink,
+            tags: novelData.tags,
+            genres: novelData.genres,
+            status: novelData.status,
+        });
 
-                if (!novelId) {
-                    console.log("Failed to process novel data. Skipping.");
-                    continue;  // Skip this novel and move to the next one
-                }
+        if (!novelId) {
+            console.log("Failed to process novel data. Skipping.");
+            continue;  // Skip this novel and move to the next one
+        }
 
-                // Get latest chapter from DB to determine how many chapters to scrape
-                const latestChapterNumber = await getLatestChapterNumber(novelId);
-                console.log(`Current chapters in database: ${latestChapterNumber}`);
-                console.log(`Total chapters on site: ${novelData.numOfCh}`);
+        // Get latest chapter from DB to determine how many chapters to scrape
+        const latestChapterNumber = await getLatestChapterNumber(novelId);
+        
+        // Use the most reliable chapter count - prefer numOfCh but fall back to chapters
+        // if numOfCh is zero
+        const totalChapters = novelData.numOfCh || parseInt(novelData.chapters) || 0;
+        
+        console.log(`Current chapters in database: ${latestChapterNumber}`);
+        console.log(`Total chapters on site: ${totalChapters}`);
 
-                if (latestChapterNumber >= novelData.numOfCh) {
-                    console.log("Novel is already up to date. No new chapters to scrape.");
-                    continue;  // Skip this novel and move to the next one
-                }
+        if (latestChapterNumber >= totalChapters || totalChapters === 0) {
+            console.log("Novel is already up to date or no chapters found. Skipping.");
+            continue;  // Skip this novel and move to the next one
+        }
 
-                // Calculate how many new chapters to scrape
-                const chaptersToScrape = novelData.numOfCh - latestChapterNumber;
-                console.log(`Need to scrape ${chaptersToScrape} new chapters.`);
+        // Calculate how many new chapters to scrape
+        const chaptersToScrape = totalChapters - latestChapterNumber;
+        console.log(`Need to scrape ${chaptersToScrape} new chapters.`);
 
-                // Scrape chapters (only the new ones)
-                const scrapedChapters = await scrapeChapters(page, novelData.numOfCh, latestChapterNumber);
-                console.log(`Total new chapters scraped: ${scrapedChapters.length}`);
+        // Scrape chapters (only the new ones)
+        const scrapedChapters = await scrapeChapters(page, totalChapters, latestChapterNumber);
+        console.log(`Total new chapters scraped: ${scrapedChapters.length}`);
 
                 // Store new chapters in database
                 if (scrapedChapters.length > 0) {

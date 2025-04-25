@@ -143,8 +143,16 @@ async function scrapeNovelDetails(page) {
     });
   
     const status = await page.evaluate(() => {
-        const statusElement = document.querySelector("novelstatustextlarge");
-        return statusElement ? statusElement.innerText.trim() : "Ongoing";
+        const statusElement = document.querySelector(".novelstatustextlarge");
+        if (!statusElement) {
+            // Try alternative selectors if the primary one fails
+            const altStatusElement = document.querySelector(".novelstatustextmedium");
+            if (altStatusElement) {
+                return altStatusElement.innerText.trim().toLowerCase();
+            }
+            return "ongoing"; // Default to ongoing if no status found
+        }
+        return statusElement.innerText.trim().toLowerCase();
     });
   
     // Extract book image and chapter count

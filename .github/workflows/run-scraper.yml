@@ -28,51 +28,12 @@
 #         run: node main.js
 
 
-# name: Run Book Scraper Every 8 Hours
-
-# on:
-#   schedule:
-#     - cron: '0 */8 * * *'
-#   workflow_dispatch:
-
-# concurrency:
-#   group: scraper-job
-#   cancel-in-progress: false  # Queue up if already running
-
-# jobs:
-#   run-scraper:
-#     runs-on: ubuntu-latest
-
-#     steps:
-#       - name: Checkout repo
-#         uses: actions/checkout@v3
-
-#       - name: Set up Node.js
-#         uses: actions/setup-node@v3
-#         with:
-#           node-version: '18'
-
-#       - name: Install dependencies
-#         run: npm install
-
-#       - name: Install Chrome for Puppeteer
-#         run: npx puppeteer browsers install chrome
-
-#       - name: Run scraper 2.0
-#         env:
-#           DB_URL: "postgresql://your-db-url"
-#         run: node main.js
-
 name: Run Book Scraper Every 8 Hours
 
 on:
   schedule:
-    - cron: '0 */8 * * *'  # This runs on the default branch only
+    - cron: '0 */8 * * *'
   workflow_dispatch:
-  push:
-    branches:
-      - scraper_1.0
-      - scraper_2.0
 
 concurrency:
   group: scraper-job
@@ -80,8 +41,6 @@ concurrency:
 
 jobs:
   run-scraper:
-    # Ensure this never runs on 'main'
-    if: github.ref != 'refs/heads/main' && (github.ref == 'refs/heads/scraper_1.0' || github.ref == 'refs/heads/scraper_2.0')
     runs-on: ubuntu-latest
 
     steps:
@@ -103,4 +62,45 @@ jobs:
         env:
           DB_URL: "postgresql://your-db-url"
         run: node main.js
+
+# name: Run Book Scraper Every 8 Hours
+
+# on:
+#   schedule:
+#     - cron: '0 */8 * * *'  # This runs on the default branch only
+#   workflow_dispatch:
+#   push:
+#     branches:
+#       - scraper_1.0
+#       - scraper_2.0
+
+# concurrency:
+#   group: scraper-job
+#   cancel-in-progress: false  # Queue up if already running
+
+# jobs:
+#   run-scraper:
+#     # Ensure this never runs on 'main'
+#     if: github.ref != 'refs/heads/main' && (github.ref == 'refs/heads/scraper_1.0' || github.ref == 'refs/heads/scraper_2.0')
+#     runs-on: ubuntu-latest
+
+#     steps:
+#       - name: Checkout repo
+#         uses: actions/checkout@v3
+
+#       - name: Set up Node.js
+#         uses: actions/setup-node@v3
+#         with:
+#           node-version: '18'
+
+#       - name: Install dependencies
+#         run: npm install
+
+#       - name: Install Chrome for Puppeteer
+#         run: npx puppeteer browsers install chrome
+
+#       - name: Run scraper 2.0
+#         env:
+#           DB_URL: "postgresql://your-db-url"
+#         run: node main.js
 

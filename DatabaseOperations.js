@@ -1,6 +1,17 @@
 // db-operations.js
 const client = require("./db");
 
+function slugify(str) {
+  return str
+    .toLowerCase()
+    .normalize('NFD')                 // Normalize accented letters
+    .replace(/[\u0300-\u036f]/g, '')   // Remove accents
+    .replace(/[^a-z0-9\s-]/g, '')      // Remove special characters
+    .trim()
+    .replace(/\s+/g, '-')              // Replace spaces with hyphens
+    .replace(/-+/g, '-');              // Collapse multiple hyphens
+}
+
 // Function to check if novel exists
 async function checkNovelExists(title, author) {
   try {
@@ -161,14 +172,16 @@ async function insertNovel(novel) {
         author, 
         description, 
         cover_image_url, 
-        status
-      ) VALUES ($1, $2, $3, $4, $5) RETURNING novel_id`,
+        status,
+        slug,
+      ) VALUES ($1, $2, $3, $4, $5, $6) RETURNING novel_id`,
       [
         novel.title,
         novel.author,
         novel.description,
         novel.cover_image_url,
         novel.status.toLowerCase(), // Convert to lowercase to match CHECK constraint
+        slugify(novel.title),
       ]
     );
     

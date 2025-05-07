@@ -1,5 +1,5 @@
 // db-operations.js
-const client = require("./db");
+const xata = require("./db");
 
 function slugify(str) {
   return str
@@ -15,14 +15,13 @@ function slugify(str) {
 // Function to check if novel exists
 async function checkNovelExists(title, author) {
   try {
-    const result = await client.query(
-      `SELECT novel_id, title, author FROM novels WHERE title = $1 AND author = $2`,
-      [title, author]
-    );
+    const result = await xata.db.novels
+      .filter({ title, author })
+      .getFirst();
     
-    if (result.rows.length > 0) {
-      console.log(`Novel "${title}" by ${author} already exists with ID: ${result.rows[0].novel_id}`);
-      return result.rows[0];
+    if (result) {
+      console.log(`Novel "${title}" by ${author} already exists with ID: ${result.id}`);
+      return result;
     }
     
     return null;
@@ -35,43 +34,43 @@ async function checkNovelExists(title, author) {
 // Function to get the latest chapter number for a novel
 async function getLatestChapterNumber(novelId) {
   try {
-    const result = await client.query(
-      `SELECT MAX(chapter_number) as latest_chapter FROM chapters WHERE novel_id = $1`,
-      [novelId]
-    );
+    const result = await xata.db.chapters
+      .filter({ novel_id: novelId })
+      .sort("chapter_number", "desc")
+      .getFirst();
     
-    return result.rows[0].latest_chapter || 0;
+    return result ? result.chapter_number : 0;
   } catch (error) {
     console.error("Error getting latest chapter number:", error);
     return 0;
   }
 }
 
-// Function to update timestamps (replaces update_modified_column trigger)
+// Function to update timestamps
 async function updateTimestamp(tableName, idColumn, idValue) {
   try {
-    await client.query(
-      `UPDATE ${tableName} SET updated_at = CURRENT_TIMESTAMP WHERE ${idColumn} = $1`,
-      [idValue]
-    );
+    await xata.db[tableName].update(idValue, {
+      updated_at: new Date().toISOString()
+    });
   } catch (error) {
     console.error(`Error updating timestamp for ${tableName}:`, error);
   }
 }
 
-// Function to update novel rating (replaces update_novel_rating trigger)
+// Function to update novel rating
 async function updateNovelRating(novelId) {
   try {
-    await client.query(
-      `UPDATE novels 
-       SET average_rating = (
-         SELECT COALESCE(AVG(score), 0)
-         FROM ratings
-         WHERE novel_id = $1
-       )
-       WHERE novel_id = $1`,
-      [novelId]
-    );
+    const ratings = await xata.db.ratings
+      .filter({ novel_id: novelId })
+      .getAll();
+    
+    const averageRating = ratings.length > 0
+      ? ratings.reduce((sum, r) => sum + r.score, 0) / ratings.length
+      : 0;
+    
+    await xata.db.novels.update(novelId, {
+      average_rating: averageRating
+    });
   } catch (error) {
     console.error("Error updating novel rating:", error);
   }
@@ -80,27 +79,31 @@ async function updateNovelRating(novelId) {
 // Function to add or update a rating
 async function addOrUpdateRating(novelId, userId, score, review = null) {
   try {
-    await client.query('BEGIN');
-
-    // Insert or update the rating
-    await client.query(
-      `INSERT INTO ratings (novel_id, user_id, score, review)
-       VALUES ($1, $2, $3, $4)
-       ON CONFLICT (novel_id, user_id) 
-       DO UPDATE SET 
-         score = $3,
-         review = $4,
-         updated_at = CURRENT_TIMESTAMP`,
-      [novelId, userId, score, review]
-    );
+    const existingRating = await xata.db.ratings
+      .filter({ novel_id: novelId, user_id: userId })
+      .getFirst();
+    
+    if (existingRating) {
+      await xata.db.ratings.update(existingRating.id, {
+        score,
+        review,
+        updated_at: new Date().toISOString()
+      });
+    } else {
+      await xata.db.ratings.create({
+        novel_id: novelId,
+        user_id: userId,
+        score,
+        review,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      });
+    }
 
     // Update the novel's average rating
     await updateNovelRating(novelId);
-
-    await client.query('COMMIT');
     return true;
   } catch (error) {
-    await client.query('ROLLBACK');
     console.error("Error adding/updating rating:", error);
     return false;
   }
@@ -109,103 +112,85 @@ async function addOrUpdateRating(novelId, userId, score, review = null) {
 // Function to update novel metadata
 async function updateNovelMetadata(novelId, novel) {
   try {
-    await client.query('BEGIN');
-    
     // Update novel basic info
-    await client.query(
-      `UPDATE novels SET 
-        description = $1, 
-        cover_image_url = $2, 
-        status = $3
-      WHERE novel_id = $4`,
-      [
-        novel.description,
-        novel.cover_image_url,
-        novel.status.toLowerCase(),
-        novelId
-      ]
-    );
+    await xata.db.novels.update(novelId, {
+      description: novel.description,
+      cover_image_url: novel.cover_image_url,
+      status: novel.status.toLowerCase(),
+      updated_at: new Date().toISOString()
+    });
     
-    // Update timestamp
-    await updateTimestamp('novels', 'novel_id', novelId);
-    
-    // Update genres - First remove existing
+    // Update genres
     if (novel.genres && novel.genres.length > 0) {
-      // Clear existing genres
-      await client.query(
-        `DELETE FROM novel_genres WHERE novel_id = $1`,
-        [novelId]
-      );
+      // Get existing genres
+      const existingGenres = await xata.db.novel_genres
+        .filter({ novel_id: novelId })
+        .getAll();
+      
+      // Remove existing genres
+      for (const genre of existingGenres) {
+        await xata.db.novel_genres.delete(genre.id);
+      }
       
       // Add new genres
       for (const genreName of novel.genres) {
-        // Insert genre if it doesn't exist
-        await client.query(
-          `INSERT INTO genres (name) 
-           VALUES ($1) 
-           ON CONFLICT (name) DO NOTHING`,
-          [genreName]
-        );
+        // Get or create genre
+        let genre = await xata.db.genres
+          .filter({ name: genreName })
+          .getFirst();
         
-        // Get genre_id
-        const genreResult = await client.query(
-          `SELECT genre_id FROM genres WHERE name = $1`,
-          [genreName]
-        );
+        if (!genre) {
+          genre = await xata.db.genres.create({
+            name: genreName,
+            created_at: new Date().toISOString()
+          });
+        }
         
         // Link novel to genre
-        if (genreResult.rows.length > 0) {
-          await client.query(
-            `INSERT INTO novel_genres (novel_id, genre_id)
-             VALUES ($1, $2)
-             ON CONFLICT DO NOTHING`,
-            [novelId, genreResult.rows[0].genre_id]
-          );
-        }
+        await xata.db.novel_genres.create({
+          novel_id: novelId,
+          genre_id: genre.id
+        });
       }
     }
     
-    // Update tags - First remove existing
+    // Update tags
     if (novel.tags && novel.tags.length > 0) {
-      // Clear existing tags
-      await client.query(
-        `DELETE FROM novel_tags WHERE novel_id = $1`,
-        [novelId]
-      );
+      // Get existing tags
+      const existingTags = await xata.db.novel_tags
+        .filter({ novel_id: novelId })
+        .getAll();
+      
+      // Remove existing tags
+      for (const tag of existingTags) {
+        await xata.db.novel_tags.delete(tag.id);
+      }
       
       // Add new tags
       for (const tagName of novel.tags) {
-        // Insert tag if it doesn't exist
-        await client.query(
-          `INSERT INTO tags (name) 
-           VALUES ($1) 
-           ON CONFLICT (name) DO NOTHING`,
-          [tagName]
-        );
+        // Get or create tag
+        let tag = await xata.db.tags
+          .filter({ name: tagName })
+          .getFirst();
         
-        // Get tag_id
-        const tagResult = await client.query(
-          `SELECT tag_id FROM tags WHERE name = $1`,
-          [tagName]
-        );
+        if (!tag) {
+          tag = await xata.db.tags.create({
+            name: tagName,
+            created_at: new Date().toISOString()
+          });
+        }
         
         // Link novel to tag
-        if (tagResult.rows.length > 0) {
-          await client.query(
-            `INSERT INTO novel_tags (novel_id, tag_id)
-             VALUES ($1, $2)
-             ON CONFLICT DO NOTHING`,
-            [novelId, tagResult.rows[0].tag_id]
-          );
-        }
+        await xata.db.novel_tags.create({
+          novel_id: novelId,
+          tag_id: tag.id
+        });
       }
     }
     
-    await client.query('COMMIT');
     console.log(`Novel metadata updated for ID: ${novelId}`);
     return true;
   } catch (error) {
-    await client.query('ROLLBACK');
     console.error("Error updating novel metadata:", error);
     return false;
   }
@@ -218,102 +203,73 @@ async function insertNovel(novel) {
     const existingNovel = await checkNovelExists(novel.title, novel.author);
     if (existingNovel) {
       // Update metadata if novel exists
-      await updateNovelMetadata(existingNovel.novel_id, novel);
-      return existingNovel.novel_id;
+      await updateNovelMetadata(existingNovel.id, novel);
+      return existingNovel.id;
     }
     
     // If novel doesn't exist, insert it
-    // Begin transaction
-    await client.query('BEGIN');
+    const novelRecord = await xata.db.novels.create({
+      title: novel.title,
+      author: novel.author,
+      description: novel.description,
+      cover_image_url: novel.cover_image_url,
+      status: novel.status.toLowerCase(),
+      slug: slugify(novel.title),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    });
     
-    // 1. Insert the novel
-    const novelResult = await client.query(
-      `INSERT INTO novels (
-        title, 
-        author, 
-        description, 
-        cover_image_url, 
-        status,
-        slug
-      ) VALUES ($1, $2, $3, $4, $5, $6) RETURNING novel_id`,
-      [
-        novel.title,
-        novel.author,
-        novel.description,
-        novel.cover_image_url,
-        novel.status.toLowerCase(), // Convert to lowercase to match CHECK constraint
-        slugify(novel.title),
-      ]
-    );
+    const novelId = novelRecord.id;
     
-    const novelId = novelResult.rows[0].novel_id;
-    
-    // 2. Process genres
+    // Process genres
     if (novel.genres && novel.genres.length > 0) {
       for (const genreName of novel.genres) {
-        // Insert genre if it doesn't exist
-        await client.query(
-          `INSERT INTO genres (name) 
-           VALUES ($1) 
-           ON CONFLICT (name) DO NOTHING`,
-          [genreName]
-        );
+        // Get or create genre
+        let genre = await xata.db.genres
+          .filter({ name: genreName })
+          .getFirst();
         
-        // Get genre_id
-        const genreResult = await client.query(
-          `SELECT genre_id FROM genres WHERE name = $1`,
-          [genreName]
-        );
+        if (!genre) {
+          genre = await xata.db.genres.create({
+            name: genreName,
+            created_at: new Date().toISOString()
+          });
+        }
         
         // Link novel to genre
-        if (genreResult.rows.length > 0) {
-          await client.query(
-            `INSERT INTO novel_genres (novel_id, genre_id)
-             VALUES ($1, $2)
-             ON CONFLICT DO NOTHING`,
-            [novelId, genreResult.rows[0].genre_id]
-          );
-        }
+        await xata.db.novel_genres.create({
+          novel_id: novelId,
+          genre_id: genre.id
+        });
       }
     }
 
-    // 3. Process tags separately
+    // Process tags
     if (novel.tags && novel.tags.length > 0) {
       for (const tagName of novel.tags) {
-        // Insert tag if it doesn't exist
-        await client.query(
-          `INSERT INTO tags (name) 
-           VALUES ($1) 
-           ON CONFLICT (name) DO NOTHING`,
-          [tagName]
-        );
+        // Get or create tag
+        let tag = await xata.db.tags
+          .filter({ name: tagName })
+          .getFirst();
         
-        // Get tag_id
-        const tagResult = await client.query(
-          `SELECT tag_id FROM tags WHERE name = $1`,
-          [tagName]
-        );
+        if (!tag) {
+          tag = await xata.db.tags.create({
+            name: tagName,
+            created_at: new Date().toISOString()
+          });
+        }
         
         // Link novel to tag
-        if (tagResult.rows.length > 0) {
-          await client.query(
-            `INSERT INTO novel_tags (novel_id, tag_id)
-             VALUES ($1, $2)
-             ON CONFLICT DO NOTHING`,
-            [novelId, tagResult.rows[0].tag_id]
-          );
-        }
+        await xata.db.novel_tags.create({
+          novel_id: novelId,
+          tag_id: tag.id
+        });
       }
     }
-    
-    // Commit transaction
-    await client.query('COMMIT');
     
     console.log(`Novel inserted with ID: ${novelId}`);
     return novelId;
   } catch (error) {
-    // Rollback transaction in case of error
-    await client.query('ROLLBACK');
     console.error("Error inserting novel:", error);
     return null;
   }
@@ -326,9 +282,6 @@ async function insertChapters(novelId, chapters) {
     const latestChapterNumber = await getLatestChapterNumber(novelId);
     console.log(`Current latest chapter: ${latestChapterNumber}`);
     
-    // Begin transaction
-    await client.query('BEGIN');
-    
     let newChaptersCount = 0;
     
     for (let i = 0; i < chapters.length; i++) {
@@ -336,59 +289,38 @@ async function insertChapters(novelId, chapters) {
       const chapterNumber = latestChapterNumber + i + 1;
       
       // Check if this chapter already exists
-      const chapterExists = await client.query(
-        `SELECT chapter_id FROM chapters WHERE novel_id = $1 AND chapter_number = $2`,
-        [novelId, chapterNumber]
-      );
+      const chapterExists = await xata.db.chapters
+        .filter({ novel_id: novelId, chapter_number: chapterNumber })
+        .getFirst();
       
-      if (chapterExists.rows.length > 0) {
+      if (chapterExists) {
         console.log(`Chapter ${chapterNumber} already exists. Skipping.`);
         continue;
       }
       
-      await client.query(
-        `INSERT INTO chapters (
-          novel_id, 
-          chapter_number, 
-          title, 
-          content, 
-          created_at,
-          is_free
-        ) VALUES ($1, $2, $3, $4, $5, $6)`,
-        [
-          novelId, 
-          chapterNumber, 
-          chapter.title, 
-          chapter.content, 
-          new Date(),
-          true // Assuming all scraped chapters are free
-        ]
-      );
+      await xata.db.chapters.create({
+        novel_id: novelId,
+        chapter_number: chapterNumber,
+        title: chapter.title,
+        content: chapter.content,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        is_free: true
+      });
       
       newChaptersCount++;
       console.log(`Chapter ${chapterNumber} inserted.`);
     }
     
     // Update the novel's updated_at timestamp
-    await updateTimestamp('novels', 'novel_id', novelId);
-    
-    // Commit transaction
-    await client.query('COMMIT');
+    await updateTimestamp('novels', 'id', novelId);
     
     console.log(`${newChaptersCount} new chapters inserted successfully.`);
     return newChaptersCount;
   } catch (error) {
-    // Rollback transaction in case of error
-    await client.query('ROLLBACK');
     console.error("Error inserting chapters:", error);
     return 0;
   }
-}
-
-// Close the database connection function
-async function closeDbConnection() {
-  await client.end();
-  console.log("Database connection closed.");
 }
 
 // Export the functions
@@ -398,7 +330,6 @@ module.exports = {
   checkNovelExists,
   updateNovelMetadata,
   getLatestChapterNumber,
-  closeDbConnection,
   addOrUpdateRating,
   updateNovelRating
 };

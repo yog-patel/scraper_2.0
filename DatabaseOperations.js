@@ -47,6 +47,65 @@ async function getLatestChapterNumber(novelId) {
   }
 }
 
+// Function to update timestamps (replaces update_modified_column trigger)
+async function updateTimestamp(tableName, idColumn, idValue) {
+  try {
+    await client.query(
+      `UPDATE ${tableName} SET updated_at = CURRENT_TIMESTAMP WHERE ${idColumn} = $1`,
+      [idValue]
+    );
+  } catch (error) {
+    console.error(`Error updating timestamp for ${tableName}:`, error);
+  }
+}
+
+// Function to update novel rating (replaces update_novel_rating trigger)
+async function updateNovelRating(novelId) {
+  try {
+    await client.query(
+      `UPDATE novels 
+       SET average_rating = (
+         SELECT COALESCE(AVG(score), 0)
+         FROM ratings
+         WHERE novel_id = $1
+       )
+       WHERE novel_id = $1`,
+      [novelId]
+    );
+  } catch (error) {
+    console.error("Error updating novel rating:", error);
+  }
+}
+
+// Function to add or update a rating
+async function addOrUpdateRating(novelId, userId, score, review = null) {
+  try {
+    await client.query('BEGIN');
+
+    // Insert or update the rating
+    await client.query(
+      `INSERT INTO ratings (novel_id, user_id, score, review)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (novel_id, user_id) 
+       DO UPDATE SET 
+         score = $3,
+         review = $4,
+         updated_at = CURRENT_TIMESTAMP`,
+      [novelId, userId, score, review]
+    );
+
+    // Update the novel's average rating
+    await updateNovelRating(novelId);
+
+    await client.query('COMMIT');
+    return true;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error("Error adding/updating rating:", error);
+    return false;
+  }
+}
+
 // Function to update novel metadata
 async function updateNovelMetadata(novelId, novel) {
   try {
@@ -57,8 +116,7 @@ async function updateNovelMetadata(novelId, novel) {
       `UPDATE novels SET 
         description = $1, 
         cover_image_url = $2, 
-        status = $3,
-        updated_at = CURRENT_TIMESTAMP
+        status = $3
       WHERE novel_id = $4`,
       [
         novel.description,
@@ -67,6 +125,9 @@ async function updateNovelMetadata(novelId, novel) {
         novelId
       ]
     );
+    
+    // Update timestamp
+    await updateTimestamp('novels', 'novel_id', novelId);
     
     // Update genres - First remove existing
     if (novel.genres && novel.genres.length > 0) {
@@ -309,10 +370,7 @@ async function insertChapters(novelId, chapters) {
     }
     
     // Update the novel's updated_at timestamp
-    await client.query(
-      `UPDATE novels SET updated_at = CURRENT_TIMESTAMP WHERE novel_id = $1`,
-      [novelId]
-    );
+    await updateTimestamp('novels', 'novel_id', novelId);
     
     // Commit transaction
     await client.query('COMMIT');
@@ -340,5 +398,7 @@ module.exports = {
   checkNovelExists,
   updateNovelMetadata,
   getLatestChapterNumber,
-  closeDbConnection
+  closeDbConnection,
+  addOrUpdateRating,
+  updateNovelRating
 };

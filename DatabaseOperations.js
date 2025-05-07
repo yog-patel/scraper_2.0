@@ -234,7 +234,7 @@ async function insertNovel(novel) {
         description, 
         cover_image_url, 
         status,
-        slug,
+        slug
       ) VALUES ($1, $2, $3, $4, $5, $6) RETURNING novel_id`,
       [
         novel.title,
